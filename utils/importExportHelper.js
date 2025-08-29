@@ -78,7 +78,7 @@ export const exportAttendanceData = async (attendanceData) => {
     // Prepare data for export
     const exportData = {
       exportDate: new Date().toISOString(),
-      appVersion: '1.0.2',
+      appVersion: '1.0.3',
       data: {
         attendance: attendanceData.attendance || {},
         monthlySalaries: attendanceData.monthlySalaries || {},
