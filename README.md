@@ -21,7 +21,7 @@ If the keystore file is **missing**, either:
 ```groovy
 signingConfigs {
     release {
-        storeFile file('<path to project>/android/app/my-release-key.keystore') // Adjust if your path is different
+        storeFile file('my-release-key.keystore') // Adjust if your path is different relative to /android/app/
         storePassword 'your_keystore_password'
         keyAlias 'my-key-alias'
         keyPassword 'your_key_password'
@@ -36,14 +36,10 @@ signingConfigs {
 Use this command to generate a new keystore:
 
 ```bash
-keytool -genkeypair -v \
-  -keystore android/app/my-release-key.keystore \
-  -keyalg RSA -keysize 2048 -validity 10000 \
-  -alias my-key-alias
+keytool -genkeypair -v -keystore android/app/my-release-key.keystore -keyalg RSA -keysize 2048 -validity 10000 -alias my-key-alias
 ```
 
 You will be prompted to set:
-
 - Keystore password (`storePassword`)
 - Key password (`keyPassword`)
 - Identity info (Name, Org, Location, etc.)
@@ -56,8 +52,8 @@ You will be prompted to set:
 
 ```bash
 cd android
-./gradlew clean
-./gradlew assembleRelease
+gradlew clean
+gradlew assembleRelease
 ```
 
 ### 2. Install the APK on a Connected Android Device
