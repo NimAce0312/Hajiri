@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- Storage permissions for file operations -->
+    <!-- For Android 10 and below -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <!-- Note: For Android 13+, DocumentPicker handles file access permissions automatically -->
+    <!-- We only need WRITE_EXTERNAL_STORAGE for saving exports to Downloads folder -->
 
     <application
       android:name=".MainApplication"

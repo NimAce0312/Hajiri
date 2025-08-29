@@ -1,6 +1,7 @@
 import React, {createContext, useState, useEffect} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {getBSMonthDates, getBSWeekday, getCurrentBSDate} from '../utils/nepaliDateHelper';
+import {exportAttendanceData, importAttendanceData, validateAndMigrateData} from '../utils/importExportHelper';
 
 export const AttendanceContext = createContext();
 
@@ -202,6 +203,40 @@ export const AttendanceProvider = ({children}) => {
     });
   };
 
+  // Export all data
+  const exportData = async () => {
+    const dataToExport = {
+      attendance,
+      monthlySalaries,
+      salaryReceived,
+      holidays,
+    };
+    return await exportAttendanceData(dataToExport);
+  };
+
+  // Import data and replace current data
+  const importData = async () => {
+    try {
+      const importedData = await importAttendanceData();
+      if (importedData) {
+        // Validate and migrate the imported data
+        const validatedData = validateAndMigrateData(importedData);
+        
+        // Update all state variables
+        setAttendance(validatedData.attendance);
+        setMonthlySalaries(validatedData.monthlySalaries);
+        setSalaryReceived(validatedData.salaryReceived);
+        setHolidays(validatedData.holidays);
+        
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Import error in context:', error);
+      return false;
+    }
+  };
+
   return (
     <AttendanceContext.Provider
       value={{
@@ -227,6 +262,8 @@ export const AttendanceProvider = ({children}) => {
         setCurrentYear,
         currentMonth,
         setCurrentMonth,
+        exportData,
+        importData,
       }}>
       {children}
     </AttendanceContext.Provider>

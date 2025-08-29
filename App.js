@@ -1,19 +1,23 @@
 import React from "react";
-import { NavigationContainer } from "@react-navigation/native";
-import { createStackNavigator } from "@react-navigation/stack";
+import { StatusBar } from "react-native";
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { AttendanceProvider } from "./context/AttendanceContext";
 import CalendarScreen from "./components/CalendarScreen";
-
-const Stack = createStackNavigator();
+import { Colors } from "./constants/theme";
 
 export default function App() {
   return (
-    <AttendanceProvider>
-      <NavigationContainer>
-        <Stack.Navigator>
-          <Stack.Screen name="Calendar" component={CalendarScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    </AttendanceProvider>
+    <SafeAreaProvider>
+      <AttendanceProvider>
+        <SafeAreaView style={{ flex: 1, backgroundColor: Colors.background }}>
+          <StatusBar 
+            barStyle="dark-content" 
+            backgroundColor={Colors.background} 
+            translucent={false} 
+          />
+          <CalendarScreen />
+        </SafeAreaView>
+      </AttendanceProvider>
+    </SafeAreaProvider>
   );
 }
