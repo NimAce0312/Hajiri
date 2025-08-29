@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
   
   salaryAmount: {
@@ -148,12 +148,12 @@ const styles = StyleSheet.create({
   },
   
   salaryStats: {
-    gap: Spacing.base,
+    gap: Spacing.sm,
   },
   
   statItem: {
     backgroundColor: Colors.surfaceSecondary,
-    padding: Spacing.base,
+    padding: Spacing.sm,
     borderRadius: BorderRadius.base,
     alignItems: 'center',
   },
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     color: Colors.textSecondary,
     fontWeight: Typography.fontWeight.medium,
-    marginBottom: Spacing.xs,
+    marginBottom: 2,
   },
   
   statValue: {
@@ -178,7 +178,7 @@ const styles = StyleSheet.create({
   receivedDate: {
     fontSize: Typography.fontSize.xs,
     color: Colors.textTertiary,
-    marginTop: Spacing.xs,
+    marginTop: 2,
   },
 });
 

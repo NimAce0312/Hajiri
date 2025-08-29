@@ -31,6 +31,7 @@ const Header = ({ onExport, onImport }) => {
 
 const styles = StyleSheet.create({
   header: {
+    zIndex: 1001,
     backgroundColor: Colors.surface,
     paddingHorizontal: Spacing.base,
     paddingVertical: Spacing.base,

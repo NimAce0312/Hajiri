@@ -13,7 +13,8 @@ const CalendarGrid = ({
   hasSalaryReceived, 
   markAttendance,
   setSelectedDate,
-  showActionSheet 
+  showActionSheet,
+  attendance // Add attendance prop
 }) => {
   // Render each day in the calendar
   const renderDay = ({ item: date }) => {
@@ -28,7 +29,12 @@ const CalendarGrid = ({
     let backgroundColor;
     let textColor = Colors.textOnDark;
     
-    if (isToday) {
+    // Check if today's attendance has been explicitly set
+    const hasExplicitAttendance = attendance[date] !== undefined;
+    
+    // If it's today, show today color only for present status
+    // Override with status color for absent and holiday
+    if (isToday && status === 'present') {
       backgroundColor = Colors.today;
       textColor = Colors.textPrimary;
     } else {
@@ -182,11 +188,13 @@ const styles = StyleSheet.create({
   todayDay: {
     borderWidth: 2,
     borderColor: Colors.textPrimary,
+    margin: 0, // Reduce margin to compensate for border
   },
   
   dayWithSalary: {
     borderWidth: 1,
     borderColor: Colors.warning,
+    margin: 1, // Reduce margin to compensate for border
   },
   
   dayText: {

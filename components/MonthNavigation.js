@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Button, Card } from './UI';
 import { getBSMonthName } from '../utils/nepaliDateHelper';
 import { Colors, Typography, Spacing } from '../constants/theme';
@@ -8,6 +8,7 @@ const MonthNavigation = ({
   currentYear, 
   currentMonth, 
   onChangeMonth, 
+  onNavigateToToday,
   isAtEarliestMonth, 
   isAtLatestMonth 
 }) => {
@@ -23,11 +24,11 @@ const MonthNavigation = ({
           variant="secondary"
           style={styles.navButton}
         />
-        <View style={styles.monthTitleContainer}>
+        <TouchableOpacity style={styles.monthTitleContainer} onPress={onNavigateToToday}>
           <Text style={styles.monthTitle}>
             {getBSMonthName(currentMonth)} {currentYear}
           </Text>
-        </View>
+        </TouchableOpacity>
         <Button
           icon="right"
           title="Next"
@@ -61,6 +62,8 @@ const styles = StyleSheet.create({
   monthTitleContainer: {
     flex: 1,
     alignItems: 'center',
+    paddingVertical: Spacing.xs,
+    borderRadius: 8,
   },
   
   monthTitle: {

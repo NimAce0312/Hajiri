@@ -10,14 +10,18 @@ const SelectedDateInfo = ({ selectedDate, getHolidayReason, getDayStatus, showSe
 
   return (
     <Card title="Holiday Information" style={styles.infoCard}>
-      <Text style={styles.infoText}>
-        <Text style={styles.infoLabel}>Date: </Text>
-        {selectedDate}
-      </Text>
-      <Text style={styles.infoText}>
-        <Text style={styles.infoLabel}>Reason: </Text>
-        {getHolidayReason(selectedDate) || 'No reason specified'}
-      </Text>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoText}>
+          <Text style={styles.infoLabel}>Date: </Text>
+          {selectedDate}
+        </Text>
+      </View>
+      <View style={styles.infoRow}>
+        <Text style={styles.infoText} numberOfLines={2}>
+          <Text style={styles.infoLabel}>Reason: </Text>
+          {getHolidayReason(selectedDate) || 'No reason specified'}
+        </Text>
+      </View>
     </Card>
   );
 };
@@ -28,11 +32,15 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.highlight,
   },
   
+  infoRow: {
+    marginBottom: 4,
+  },
+  
   infoText: {
     fontSize: Typography.fontSize.sm,
     color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
     lineHeight: Typography.lineHeight.normal * Typography.fontSize.sm,
+    flexWrap: 'wrap',
   },
   
   infoLabel: {

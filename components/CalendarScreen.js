@@ -4,6 +4,7 @@ import {
   StyleSheet,
   Alert,
   ScrollView,
+  PanResponder,
 } from 'react-native';
 import { AttendanceContext } from '../context/AttendanceContext';
 import {
@@ -11,14 +12,16 @@ import {
   getBSWeekday,
   getBSDaysInMonth,
   getTodayBSString,
+  getCurrentBSDate,
+  getBSMonthName,
 } from '../utils/nepaliDateHelper';
 import { Colors, Spacing } from '../constants/theme';
 import Header from './Header';
 import MonthNavigation from './MonthNavigation';
 import CalendarGrid from './CalendarGrid';
-import SelectedDateInfo from './SelectedDateInfo';
 import SalaryInformation from './SalaryInformation';
 import CalendarModal from './CalendarModal';
+import { Toast } from './UI';
 
 const CalendarScreen = () => {
   const {
@@ -52,9 +55,47 @@ const CalendarScreen = () => {
   const [salaryAmount, setSalaryAmount] = useState('');
   const [salaryTargetMonth, setSalaryTargetMonth] = useState(null);
   const [salaryTargetYear, setSalaryTargetYear] = useState(null);
-  const [showSelectedInfo, setShowSelectedInfo] = useState(false);
   const [tempSalary, setTempSalary] = useState('');
-  const selectedInfoTimer = useRef(null);
+  
+  // Store the date being processed to avoid timing issues
+  const [dateBeingProcessed, setDateBeingProcessed] = useState(null);
+  
+  // Toast state
+  const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState('info');
+
+  // Swipe gesture detection
+  const swipeThreshold = 50; // Minimum distance for a swipe
+  const velocityThreshold = 0.5; // Minimum velocity for a swipe
+
+  const panResponder = PanResponder.create({
+    onMoveShouldSetPanResponder: (evt, gestureState) => {
+      // Only respond to horizontal swipes
+      return Math.abs(gestureState.dx) > Math.abs(gestureState.dy) && Math.abs(gestureState.dx) > 10;
+    },
+    onPanResponderMove: (evt, gestureState) => {
+      // Optional: Add visual feedback during swipe
+    },
+    onPanResponderRelease: (evt, gestureState) => {
+      const { dx, vx } = gestureState;
+      
+      // Check if it's a valid swipe (distance and velocity)
+      if (Math.abs(dx) > swipeThreshold && Math.abs(vx) > velocityThreshold) {
+        if (dx > 0) {
+          // Swipe right - go to previous month
+          if (!isAtEarliestMonth()) {
+            changeMonth(-1);
+          }
+        } else {
+          // Swipe left - go to next month
+          if (!isAtLatestMonth()) {
+            changeMonth(1);
+          }
+        }
+      }
+    },
+  });
 
   // Import/Export handlers
   const handleExportData = async () => {
@@ -105,43 +146,105 @@ const CalendarScreen = () => {
     return currentYear === 2090 && currentMonth === 12;
   };
 
-  // Effect to handle selected date info timer
+  // Effect to show toast when holiday date is selected
   useEffect(() => {
-    if (selectedDate) {
-      setShowSelectedInfo(true);
-      
-      // Clear existing timer
-      if (selectedInfoTimer.current) {
-        clearTimeout(selectedInfoTimer.current);
-      }
-      
-      // Set new timer to hide info after 7 seconds
-      selectedInfoTimer.current = setTimeout(() => {
-        setShowSelectedInfo(false);
-      }, 7000);
-    } else {
-      setShowSelectedInfo(false);
-      if (selectedInfoTimer.current) {
-        clearTimeout(selectedInfoTimer.current);
+    if (selectedDate && !modalVisible) {
+      const status = getDayStatus(selectedDate);
+      if (status === 'holiday') {
+        const reason = getHolidayReason(selectedDate);
+        const dayType = getBSWeekday(selectedDate) === 6 ? 'Saturday' : 'Holiday';
+        const message = reason 
+          ? `${dayType}: ${reason}` 
+          : `${dayType} - No reason specified`;
+        
+        showToast(message, 'info');
+        
+        // Only clear selection if no modal type is set (meaning no action sheet was triggered)
+        if (!modalType) {
+          setTimeout(() => {
+            setSelectedDate(null);
+          }, 100);
+        }
       }
     }
+  }, [selectedDate, modalVisible, modalType]);
 
-    // Cleanup timer on unmount
-    return () => {
-      if (selectedInfoTimer.current) {
-        clearTimeout(selectedInfoTimer.current);
+  // Toast functions
+  const showToast = (message, type = 'info', duration = 3000) => {
+    setToastMessage(message);
+    setToastType(type);
+    setToastVisible(true);
+  };
+
+  const hideToast = () => {
+    setToastVisible(false);
+  };
+
+  // Helper function to check if a Saturday is sandwiched between absent days
+  const isSandwichSaturday = (date) => {
+    const weekday = getBSWeekday(date);
+    if (weekday !== 6) return false; // Not a Saturday
+    
+    // Parse the date to get year, month, day
+    const [year, month, day] = date.split('-').map(Number);
+    
+    // Calculate Friday (previous day) and Sunday (next day)
+    const fridayDay = day - 1;
+    const sundayDay = day + 1;
+    
+    let fridayDate, sundayDate;
+    
+    // Handle month boundaries for Friday
+    if (fridayDay < 1) {
+      // Friday is in previous month
+      const prevMonth = month - 1;
+      if (prevMonth < 1) {
+        // Previous year
+        const prevYear = year - 1;
+        const daysInPrevMonth = getBSDaysInMonth(prevYear, 12);
+        fridayDate = `${prevYear}-12-${String(daysInPrevMonth).padStart(2, '0')}`;
+      } else {
+        const daysInPrevMonth = getBSDaysInMonth(year, prevMonth);
+        fridayDate = `${year}-${String(prevMonth).padStart(2, '0')}-${String(daysInPrevMonth).padStart(2, '0')}`;
       }
-    };
-  }, [selectedDate]);
+    } else {
+      fridayDate = `${year}-${String(month).padStart(2, '0')}-${String(fridayDay).padStart(2, '0')}`;
+    }
+    
+    // Handle month boundaries for Sunday
+    const daysInCurrentMonth = getBSDaysInMonth(year, month);
+    if (sundayDay > daysInCurrentMonth) {
+      // Sunday is in next month
+      const nextMonth = month + 1;
+      if (nextMonth > 12) {
+        // Next year
+        const nextYear = year + 1;
+        sundayDate = `${nextYear}-01-01`;
+      } else {
+        sundayDate = `${year}-${String(nextMonth).padStart(2, '0')}-01`;
+      }
+    } else {
+      sundayDate = `${year}-${String(month).padStart(2, '0')}-${String(sundayDay).padStart(2, '0')}`;
+    }
+    
+    // Check if both Friday and Sunday are marked as absent
+    const fridayStatus = attendance[fridayDate];
+    const sundayStatus = attendance[sundayDate];
+    
+    return fridayStatus === 'absent' && sundayStatus === 'absent';
+  };
 
   // Determine the status of a day
   const getDayStatus = date => {
     if (!date) return 'empty';
     const weekday = getBSWeekday(date);
 
-    // Saturday (6) is holiday by default
+    // Saturday (6) is holiday by default, but check for sandwich rule
     if (weekday === 6) {
-      return 'holiday';
+      if (isSandwichSaturday(date)) {
+        return 'absent'; // Sandwich Saturday - treat as absent
+      }
+      return 'holiday'; // Normal Saturday - treat as holiday
     }
 
     // Check if date is marked as holiday in the holidays array
@@ -161,7 +264,7 @@ const CalendarScreen = () => {
     const monthlySalary = getSalaryForMonth(currentYear, currentMonth);
 
     let absentDates = dates.filter(date => {
-      const status = attendance[date];
+      const status = getDayStatus(date); // Use getDayStatus which includes sandwich Saturday logic
       return status === 'absent';
     });
 
@@ -178,8 +281,11 @@ const CalendarScreen = () => {
   // Show action sheet for long press
   const showActionSheet = (date, status, hasReceived) => {
     const options = [];
+    const weekday = getBSWeekday(date);
+    const isManuallyMarkedHoliday = holidays.some(h => h.date === date);
 
-    if (status === 'holiday' && getBSWeekday(date) !== 6) {
+    // Show unmark holiday only for manually marked holidays (not automatic Saturdays)
+    if (isManuallyMarkedHoliday) {
       options.push('Unmark Holiday');
     } else if (status !== 'holiday') {
       options.push('Mark as Holiday');
@@ -205,22 +311,29 @@ const CalendarScreen = () => {
   };
 
   const handleActionSheetChoice = (choice, date, status, hasReceived) => {
+    // Store the date being processed
+    setDateBeingProcessed(date);
+    
     switch (choice) {
       case 'Mark as Holiday':
+        setSelectedDate(date); // Ensure selectedDate is set
         setModalType('holiday');
         setHolidayReason('');
         setModalVisible(true);
         break;
       case 'Unmark Holiday':
+        setSelectedDate(date); // Ensure selectedDate is set
         setModalType('unmark_holiday');
         setModalVisible(true);
         break;
       case 'Add Salary Received':
+        setSelectedDate(date); // Ensure selectedDate is set
         setModalType('salary');
         setSalaryAmount('');
         setModalVisible(true);
         break;
       case 'View/Edit Salary Received':
+        setSelectedDate(date); // Ensure selectedDate is set
         const received = getSalaryReceived(date);
         setModalType('salary');
         setSalaryAmount(received?.amount?.toString() || '');
@@ -228,6 +341,7 @@ const CalendarScreen = () => {
         break;
       case 'Remove Salary Record':
         removeSalaryReceived(date);
+        showToast(`Salary record removed for ${date}`, 'success');
         break;
     }
   };
@@ -245,6 +359,13 @@ const CalendarScreen = () => {
     }
     setCurrentMonth(newMonth);
     setCurrentYear(newYear);
+  };
+
+  // Navigate to current month and year
+  const navigateToToday = () => {
+    const today = getCurrentBSDate();
+    setCurrentYear(today.year);
+    setCurrentMonth(today.month);
   };
 
   // Handle salary edit submission
@@ -277,15 +398,18 @@ const CalendarScreen = () => {
 
   // Handle modal submission
   const handleModalSubmit = () => {
+    // Use dateBeingProcessed as fallback if selectedDate is null
+    const dateToProcess = selectedDate || dateBeingProcessed;
+    
     if (modalType === 'holiday') {
-      addHoliday(selectedDate, holidayReason);
+      addHoliday(dateToProcess, holidayReason);
     } else if (modalType === 'unmark_holiday') {
-      removeHoliday(selectedDate);
+      removeHoliday(dateToProcess);
     } else if (modalType === 'salary') {
       const amount = parseFloat(salaryAmount);
       if (amount > 0) {
         // Use the selected month/year or default logic
-        addSalaryReceived(selectedDate, amount, salaryTargetMonth, salaryTargetYear);
+        addSalaryReceived(dateToProcess, amount, salaryTargetMonth, salaryTargetYear);
       }
     }
 
@@ -295,6 +419,7 @@ const CalendarScreen = () => {
     setSalaryTargetMonth(null);
     setSalaryTargetYear(null);
     setSelectedDate(null);
+    setDateBeingProcessed(null); // Clear the backup date
   };
 
   const currentSalary = getSalaryForMonth(currentYear, currentMonth);
@@ -306,6 +431,8 @@ const CalendarScreen = () => {
     setSalaryAmount('');
     setSalaryTargetMonth(null);
     setSalaryTargetYear(null);
+    setDateBeingProcessed(null); // Clear the backup date
+    setModalType(''); // Clear modal type
   };
 
   return (
@@ -315,43 +442,48 @@ const CalendarScreen = () => {
         onImport={handleImportData}
       />
 
-      <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <MonthNavigation 
-          currentYear={currentYear}
-          currentMonth={currentMonth}
-          onChangeMonth={changeMonth}
-          isAtEarliestMonth={isAtEarliestMonth}
-          isAtLatestMonth={isAtLatestMonth}
-        />
+      <View style={styles.swipeContainer} {...panResponder.panHandlers}>
+        <ScrollView style={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <MonthNavigation 
+            currentYear={currentYear}
+            currentMonth={currentMonth}
+            onChangeMonth={changeMonth}
+            onNavigateToToday={navigateToToday}
+            isAtEarliestMonth={isAtEarliestMonth}
+            isAtLatestMonth={isAtLatestMonth}
+          />
 
-        <CalendarGrid 
-          paddedDates={paddedDates}
-          getDayStatus={getDayStatus}
-          hasSalaryReceived={hasSalaryReceived}
-          markAttendance={markAttendance}
-          setSelectedDate={setSelectedDate}
-          showActionSheet={showActionSheet}
-        />
+          <CalendarGrid 
+            paddedDates={paddedDates}
+            getDayStatus={getDayStatus}
+            hasSalaryReceived={hasSalaryReceived}
+            markAttendance={markAttendance}
+            setSelectedDate={setSelectedDate}
+            showActionSheet={showActionSheet}
+            attendance={attendance}
+          />
 
-        <SelectedDateInfo 
-          selectedDate={selectedDate}
-          getHolidayReason={getHolidayReason}
-          getDayStatus={getDayStatus}
-          showSelectedInfo={showSelectedInfo}
-        />
+          <SalaryInformation 
+            currentSalary={currentSalary}
+            calculateSalary={calculateSalary}
+            monthSalaryReceived={monthSalaryReceived}
+            editingSalary={editingSalary}
+            tempSalary={tempSalary}
+            setTempSalary={setTempSalary}
+            onSalaryEditStart={handleSalaryEditStart}
+            onSalarySave={handleSalarySave}
+            onSalaryDiscard={handleSalaryDiscard}
+          />
+        </ScrollView>
+      </View>
 
-        <SalaryInformation 
-          currentSalary={currentSalary}
-          calculateSalary={calculateSalary}
-          monthSalaryReceived={monthSalaryReceived}
-          editingSalary={editingSalary}
-          tempSalary={tempSalary}
-          setTempSalary={setTempSalary}
-          onSalaryEditStart={handleSalaryEditStart}
-          onSalarySave={handleSalarySave}
-          onSalaryDiscard={handleSalaryDiscard}
-        />
-      </ScrollView>
+      <Toast
+        visible={toastVisible}
+        message={toastMessage}
+        type={toastType}
+        onHide={hideToast}
+        duration={4000}
+      />
 
       <CalendarModal 
         modalVisible={modalVisible}
@@ -377,6 +509,10 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  
+  swipeContainer: {
+    flex: 1,
   },
   
   scrollContainer: {

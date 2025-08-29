@@ -53,7 +53,7 @@ export const CommonStyles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderRadius: BorderRadius.md,
     padding: Spacing.base,
-    marginVertical: Spacing.sm,
+    marginVertical: Spacing.xs,
     ...Shadows.base,
   },
   
